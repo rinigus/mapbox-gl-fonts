@@ -6,7 +6,8 @@ import proto.glyphs_pb2 as glyphs
 parser = argparse.ArgumentParser(description='Import fonts and  merge them into one collection of PBF glyphs in SQLite database')
 parser.add_argument('fonts', type=str, nargs="*",
                     help='List of fonts in the order of preference (from the first to the last)')
-parser.add_argument('--database', type=str, required=True, help='SQLite database where the fonts are inserted')
+parser.add_argument('--database', type=str, help='SQLite database where the fonts are inserted')
+parser.add_argument('--directory', type=str, help='Output directory where font is written')
 parser.add_argument('--fontname', type=str, help='Font name for the merged fonts. When not specified, the name of the first font is used')
 
 #####################################################################
@@ -24,6 +25,15 @@ def get_glyph(glyph_id, gls):
                 return g
     return None
 
+def mkdir_p(path):
+    try:
+        os.makedirs(path)
+    except OSError as exc:  # Python >2.5
+        if exc.errno == errno.EEXIST and os.path.isdir(path):
+            pass
+        else:
+            raise
+
 ############
 ### main ###
 
@@ -32,6 +42,14 @@ if len(args.fonts) < 1:
     print "No fonts specified for import"
     sys.exit(-1)
 
+if args.database is None and args.directory is None:
+    print "Please provide output directory or database"
+    sys.exit(-1)
+    
+if args.database is not None and args.directory is not None:
+    print "Please provide either output directory or database, not both"
+    sys.exit(-1)
+    
 if args.fontname is None:
     args.fontname = font(args.fonts[0])
 
@@ -57,9 +75,15 @@ for f in args.fonts:
 print "Fonts loaded"
 
 # open the database
-conn = sqlite3.connect(args.database)
-c = conn.cursor()
-c.execute("CREATE TABLE IF NOT EXISTS fonts(stack TEXT NOT NULL, range TEXT NOT NULL, pbf BLOB, unique(stack,range))")
+if args.database is not None:
+    conn = sqlite3.connect(args.database)
+    c = conn.cursor()
+    c.execute("CREATE TABLE IF NOT EXISTS fonts(stack TEXT NOT NULL, range TEXT NOT NULL, pbf BLOB, unique(stack,range))")
+    database_output = True
+else:
+    mkdir_p(os.path.join(args.directory, args.fontname))
+    database_output = False
+    
 
 # iterate through ranges and merge fonts
 ranges = list(ranges)
@@ -105,15 +129,21 @@ for R in ranges:
             stats[cf] += 1
 
         # write merged font to db
-        c.execute("INSERT OR REPLACE INTO fonts(stack,range,pbf) VALUES(?,?,?)",
-                  (args.fontname, R[:-4], buffer(merged.SerializeToString())))
+        if database_output:
+            c.execute("INSERT OR REPLACE INTO fonts(stack,range,pbf) VALUES(?,?,?)",
+                      (args.fontname, R[:-4], buffer(merged.SerializeToString())))
+        else:
+            fname = os.path.join(args.directory, args.fontname, R)
+            with open(fname, 'wb') as f:
+                f.write(buffer(merged.SerializeToString()))
 
     print "Range: %s ; Glyphs written: %d" % (R[:-4], len(ids))
 
-# index database
-c.execute("CREATE INDEX IF NOT EXISTS idx_fonts ON fonts(stack,range)")
-conn.commit()
-conn.close()
+# index database and close it
+if database_output:
+    c.execute("CREATE INDEX IF NOT EXISTS idx_fonts ON fonts(stack,range)")
+    conn.commit()
+    conn.close()
 
 # cleanup
 for f,d in fontdir.iteritems():
