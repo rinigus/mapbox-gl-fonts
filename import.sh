@@ -4,6 +4,9 @@ set -e
 
 IMPORT="./fontimport.py --database=glyphs.sqlite"
 
+# uncomment to import into directory
+#IMPORT="./fontimport.py --directory=glyphs"
+
 $IMPORT fonts/OpenSans-Bold.ttf
 $IMPORT fonts/OpenSans-Italic.ttf
 $IMPORT fonts/OpenSans-Regular.ttf

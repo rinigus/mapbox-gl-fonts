@@ -7,9 +7,9 @@ cd fonts
 
 WGET="wget -nc "
 
-$WGET https://github.com/google/fonts/raw/master/apache/opensans/OpenSans-Bold.ttf
-$WGET https://github.com/google/fonts/raw/master/apache/opensans/OpenSans-Italic.ttf
-$WGET https://github.com/google/fonts/raw/master/apache/opensans/OpenSans-Regular.ttf
+$WGET http://mirrors.ctan.org/fonts/opensans/truetype/OpenSans-Bold.ttf
+$WGET http://mirrors.ctan.org/fonts/opensans/truetype/OpenSans-Italic.ttf
+$WGET http://mirrors.ctan.org/fonts/opensans/truetype/OpenSans-Regular.ttf
 
 mkdir -p noto
 cd noto

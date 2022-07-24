@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 
 import re, argparse, os, glob, sqlite3, tempfile, shutil, collections, sys
 import proto.glyphs_pb2 as glyphs
@@ -39,17 +39,17 @@ def mkdir_p(path):
 
 args = parser.parse_args()
 if len(args.fonts) < 1:
-    print "No fonts specified for import"
+    print("No fonts specified for import")
     sys.exit(-1)
 
 if args.database is None and args.directory is None:
-    print "Please provide output directory or database"
+    print("Please provide output directory or database")
     sys.exit(-1)
-    
+
 if args.database is not None and args.directory is not None:
-    print "Please provide either output directory or database, not both"
+    print("Please provide either output directory or database, not both")
     sys.exit(-1)
-    
+
 if args.fontname is None:
     args.fontname = font(args.fonts[0])
 
@@ -63,16 +63,22 @@ args.fonts = flist
 # convert all to pbfs
 fontdir = {}
 ranges = set()
+toclean = []
 for f in args.fonts:
     fontname = font(f)
-    print f, fontname
+    print(f, fontname)
+    ft = tempfile.mkdtemp()
+    shutil.copy(f, ft)
     d = tempfile.mkdtemp()
-    os.system("build-glyphs '%s' '%s'" % (f, d))
-    fontdir[f] = d
-    for pbfname in glob.glob(d + "/*pbf"):
+    os.system("build_pbf_glyphs '%s' '%s'" % (ft, d))
+    shutil.rmtree(ft)
+    toclean.append(d)
+    fd = glob.glob(d + "/*")[0]
+    fontdir[f] = fd
+    for pbfname in glob.glob(fd + "/*pbf"):
         ranges.add(os.path.basename(pbfname))
 
-print "Fonts loaded"
+print("Fonts loaded")
 
 # open the database
 if args.database is not None:
@@ -83,7 +89,7 @@ if args.database is not None:
 else:
     mkdir_p(os.path.join(args.directory, args.fontname))
     database_output = False
-    
+
 
 # iterate through ranges and merge fonts
 ranges = list(ranges)
@@ -131,13 +137,13 @@ for R in ranges:
         # write merged font to db
         if database_output:
             c.execute("INSERT OR REPLACE INTO fonts(stack,range,pbf) VALUES(?,?,?)",
-                      (args.fontname, R[:-4], buffer(merged.SerializeToString())))
+                      (args.fontname, R[:-4], memoryview(merged.SerializeToString())))
         else:
             fname = os.path.join(args.directory, args.fontname, R)
             with open(fname, 'wb') as f:
-                f.write(buffer(merged.SerializeToString()))
+                f.write(memoryview(merged.SerializeToString()))
 
-    print "Range: %s ; Glyphs written: %d" % (R[:-4], len(ids))
+    print("Range: %s ; Glyphs written: %d" % (R[:-4], len(ids)))
 
 # index database and close it
 if database_output:
@@ -146,11 +152,11 @@ if database_output:
     conn.close()
 
 # cleanup
-for f,d in fontdir.iteritems():
+for d in toclean:
     shutil.rmtree(d)
 
 # stats
-print "\nUsed glyphs:"
+print("\nUsed glyphs:")
 for f in args.fonts:
-    print f, '\t', stats[f]
-print
+    print(f, '\t', stats[f])
+print()

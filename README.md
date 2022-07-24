@@ -10,11 +10,11 @@ and easily used in Mapbox GL styles.
 ## Requirements
 
 As a requirement, font import requires
-[node-fontnik](https://github.com/mapbox/node-fontnik/). Install it
+[build_pbf_glyphs](https://github.com/stadiamaps/build_pbf_glyphs). Install it
 with
 
 ```
-npm install -g fontnik
+cargo install build_pbf_glyphs
 ```
 
 
